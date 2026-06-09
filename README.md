@@ -19,7 +19,7 @@ The system hosts a beautiful, real-time monitoring and control dashboard at the 
 
 | Module | File | Description |
 |--------|------|-------------|
-| **CV Classifier** | `models/classifier.py` | YOLOv8 detection crop → ResNet50 classification |
+| **CV Classifier** | `models/classifier.py` | YOLOv8 detection crop → ResNet18 classification |
 | **IoT Sensors** | `sensors/sensors.py` | Simulates 12 MQTT streams in the background |
 | **Route Optimizer** | `routes/route_optimizer.py` | Dijkstra shortest path + GA routing |
 | **Feedback Loop** | `feedback/feedback.py` | Automated dataset accumulation & nightly fine-tuning |
@@ -69,7 +69,7 @@ The system hosts a beautiful, real-time monitoring and control dashboard at the 
                  [ YOLOv8 Detector ] (Crop Object)
                            │
                            ▼
-               [ ResNet50 Classifier ] (Softmax 5-class)
+               [ ResNet18 Classifier ] (Softmax 5-class)
                            │
                            ▼
                     [ API Server ] ◄─── (Dashboard UI)

@@ -71,7 +71,7 @@ class FineTuner:
         import torch,torch.nn as nn
         from torch.utils.data import Dataset,DataLoader
         from torchvision import transforms
-        from models.classifier import ResNet50WasteClassifier
+        from models.classifier import ResNet18WasteClassifier
         from PIL import Image
 
         class FDS(Dataset):
@@ -88,7 +88,7 @@ class FineTuner:
             transforms.ColorJitter(0.2,0.2),transforms.ToTensor(),
             transforms.Normalize([0.485,0.456,0.406],[0.229,0.224,0.225])])
         device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model=ResNet50WasteClassifier(num_classes=len(CLASSES))
+        model=ResNet18WasteClassifier(num_classes=len(CLASSES))
         model.load_state_dict(torch.load(self.model_path,map_location=device))
         model.to(device)
         for p in model.backbone.parameters(): p.requires_grad=False

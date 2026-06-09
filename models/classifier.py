@@ -24,17 +24,18 @@ class ClassificationResult:
     latency_ms: float
     flagged: bool
 
-class ResNet50WasteClassifier(nn.Module):
+class ResNet18WasteClassifier(nn.Module):
     def __init__(self, num_classes=5, pretrained=True):
         super().__init__()
-        weights = models.ResNet50_Weights.DEFAULT if pretrained else None
-        self.backbone = models.resnet50(weights=weights)
+        weights = models.ResNet18_Weights.DEFAULT if pretrained else None
+        self.backbone = models.resnet18(weights=weights)
         in_features = self.backbone.fc.in_features
         self.backbone.fc = nn.Sequential(
             nn.Dropout(0.3), nn.Linear(in_features, 256),
             nn.ReLU(), nn.Dropout(0.2), nn.Linear(256, num_classes)
         )
     def forward(self, x): return self.backbone(x)
+
 
 class WasteClassifier:
     TRANSFORM = transforms.Compose([
@@ -43,7 +44,7 @@ class WasteClassifier:
     ])
     def __init__(self, resnet_weights, yolo_weights=None, device="auto"):
         self.device = torch.device("cuda" if torch.cuda.is_available() and device=="auto" else "cpu")
-        self.resnet = ResNet50WasteClassifier(num_classes=len(CLASSES))
+        self.resnet = ResNet18WasteClassifier(num_classes=len(CLASSES))
         state = torch.load(resnet_weights, map_location=self.device)
         self.resnet.load_state_dict(state)
         self.resnet.to(self.device).eval()

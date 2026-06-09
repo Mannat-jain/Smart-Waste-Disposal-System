@@ -14,7 +14,7 @@ import uvicorn
 
 logger=logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-RESNET_PATH="models/resnet50_waste.pt"; OUTPUT_PATH="models/resnet50_waste_v2.pt"
+RESNET_PATH="models/resnet18_waste.pt"; OUTPUT_PATH="models/resnet18_waste_v2.pt"
 
 clf=None; _sensor_cache={}; _metrics={"total":0,"flagged":0,"latency_sum":0.0,"start_time":time.time()}
 
@@ -35,8 +35,8 @@ async def lifespan(app):
     if not os.path.exists(RESNET_PATH):
         logger.info("Initializing base model weights...")
         import torch
-        from models.classifier import ResNet50WasteClassifier
-        model = ResNet50WasteClassifier(num_classes=5, pretrained=True)
+        from models.classifier import ResNet18WasteClassifier
+        model = ResNet18WasteClassifier(num_classes=5, pretrained=True)
         torch.save(model.state_dict(), RESNET_PATH)
         logger.info(f"Base weights saved to {RESNET_PATH}")
     
