@@ -116,3 +116,6 @@ To deploy this system to a cloud provider:
      uvicorn api.main:app --host 0.0.0.0 --port 8000
      ```
 
+     ---
+### Live Link: https://smart-waste-disposal-system.onrender.com/
+
