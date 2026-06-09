@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Waste Disposal System — Live Dashboard</title>
+  <style>
+    :root {
+      --sage: #6B8F71;
+      --sage-light: #A8C5AD;
+      --sage-pale: #EDF4EE;
+      --slate: #4A5568;
+      --slate-light: #718096;
+      --slate-pale: #F7F8FA;
+      --warm-gray: #8C8680;
+      --warm-pale: #F5F3F0;
+      --teal: #4A9B8E;
+      --teal-light: #7EC8BD;
+      --amber: #C4943A;
+      --amber-light: #E8C07A;
+      --clay: #9B6B5A;
+      --clay-light: #C9967E;
+      --border: rgba(106,143,113,0.18);
+      --border-strong: rgba(74,85,104,0.25);
+      --text: #2D3748;
+      --text-muted: #718096;
+      --text-faint: #A0AEC0;
+      --bg: #F5F3F0;
+      --surface: #FAFAF8;
+      --card: #FFFFFF;
+      --card-alt: #F7F8FA;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --sage: #7BAF82; --sage-light: #5A8060; --sage-pale: #1A2B1C;
+        --slate: #A0AEC0; --slate-light: #718096; --slate-pale: #1A1F2E;
+        --teal: #5BB8AB; --teal-light: #3D8A7E;
+        --amber: #D4A84A; --amber-light: #A07830;
+        --clay: #C48070; --clay-light: #8A5A4A;
+        --border: rgba(123,175,130,0.2); --border-strong: rgba(160,174,192,0.25);
+        --text: #E2E8F0; --text-muted: #A0AEC0; --text-faint: #718096;
+        --bg: #111418; --surface: #161B22; --card: #1C2430; --card-alt: #1A1F2E;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Anthropic Sans', -apple-system, sans-serif; background: var(--bg); color: var(--text); }
+    h2.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+    .dash { display: flex; flex-direction: column; gap: 0; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; background: var(--surface); border-bottom: 0.5px solid var(--border); }
+    .topbar-left { display: flex; align-items: center; gap: 10px; }
+    .logo { width: 30px; height: 30px; border-radius: 8px; background: var(--sage); display: flex; align-items: center; justify-content: center; }
+    .logo svg { width: 18px; height: 18px; fill: none; stroke: #fff; stroke-width: 1.8; stroke-linecap: round; }
+    .topbar h1 { font-size: 15px; font-weight: 500; color: var(--text); }
+    .topbar-right { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-muted); }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--sage); display: inline-block; animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    .tabs { display: flex; gap: 0; border-bottom: 0.5px solid var(--border); background: var(--surface); padding: 0 20px; overflow-x: auto; }
+    .tab { padding: 10px 16px; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); transition: all .2s; white-space: nowrap; }
+    .tab.active { color: var(--sage); border-bottom-color: var(--sage); font-weight: 500; }
+    .tab:hover:not(.active) { color: var(--text); }
+    .panel { display: none; padding: 20px; flex-direction: column; gap: 16px; }
+    .panel.active { display: flex; }
+    .metrics-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+    .metric { background: var(--card); border: 0.5px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+    .metric-label { font-size: 11px; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; }
+    .metric-val { font-size: 22px; font-weight: 500; }
+    .metric-sub { font-size: 11px; color: var(--text-faint); margin-top: 3px; }
+    .metric-trend { font-size: 11px; margin-top: 3px; }
+    .up { color: var(--sage); } .down { color: var(--clay); }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 600px) { .row2 { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 0.5px solid var(--border); border-radius: 12px; padding: 16px; }
+    .card-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+    .card-badge { font-size: 10px; padding: 3px 8px; border-radius: 20px; font-weight: 400; }
+    .badge-green { background: var(--sage-pale); color: var(--sage); }
+    .badge-amber { background: #FDF3E0; color: var(--amber); }
+    .badge-clay { background: #FAF0EC; color: var(--clay); }
+
+    /* Sensor grid */
+    .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    @media (max-width: 900px) { .sensor-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 500px) { .sensor-grid { grid-template-columns: 1fr; } }
+    .sensor { border-radius: 10px; padding: 10px 12px; border: 0.5px solid var(--border); }
+    .sensor-id { font-size: 10px; color: var(--text-faint); margin-bottom: 4px; }
+    .sensor-type { font-size: 11px; font-weight: 500; margin-bottom: 4px; }
+    .sensor-val { font-size: 14px; font-weight: 500; }
+    .sensor-bar { height: 4px; border-radius: 2px; margin-top: 6px; background: var(--border); overflow: hidden; }
+    .sensor-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+    .s-low { background: var(--sage-pale); } .fill-low { background: var(--sage); }
+    .s-mid { background: #FDF3E0; } .fill-mid { background: var(--amber); }
+    .s-high { background: #FAF0EC; } .fill-high { background: var(--clay); }
+    .s-teal { background: rgba(74,155,142,0.08); } .fill-teal { background: var(--teal); }
+
+    /* Classification */
+    .waste-classes { display: flex; flex-direction: column; gap: 8px; }
+    .waste-row { display: flex; align-items: center; gap: 10px; }
+    .waste-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .waste-name { font-size: 13px; flex: 1; }
+    .waste-pct { font-size: 13px; font-weight: 500; min-width: 36px; text-align: right; color: var(--text-muted); }
+    .waste-bar-bg { flex: 2; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .waste-bar-fill { height: 100%; border-radius: 3px; transition: width 1.2s ease; }
+    .conf-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border); }
+    .conf-val { font-weight: 500; color: var(--text); }
+
+    /* Route map */
+    #route-svg { width: 100%; height: auto; max-height: 320px; }
+    .route-legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+    .route-leg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
+    .route-leg-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* Feedback loop */
+    .feedback-flow { display: flex; align-items: center; justify-content: space-around; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+    .fb-step { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .fb-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+    .fb-label { font-size: 10px; color: var(--text-muted); text-align: center; max-width: 60px; }
+    .fb-arrow { font-size: 14px; color: var(--text-faint); }
+    .queue-list { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; max-height: 280px; overflow-y: auto; }
+    .queue-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; border: 0.5px solid var(--border); font-size: 12px; transition: background 0.2s; }
+    .queue-item:hover { background: var(--card-alt); }
+    .qi-thumb { width: 36px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .qi-info { flex: 1; }
+    .qi-id { font-weight: 500; font-size: 12px; }
+    .qi-meta { color: var(--text-muted); font-size: 10px; }
+    .qi-status { font-size: 10px; padding: 2px 7px; border-radius: 10px; }
+    .st-pending { background: #FDF3E0; color: var(--amber); }
+    .st-training { background: var(--sage-pale); color: var(--sage); }
+
+    /* API panel */
+    .api-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 600px) { .api-grid { grid-template-columns: 1fr; } }
+    .api-card { border-radius: 10px; border: 0.5px solid var(--border); padding: 12px 14px; background: var(--card-alt); }
+    .api-method { font-size: 10px; font-weight: 500; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 6px; }
+    .m-post { background: rgba(74,155,142,0.12); color: var(--teal); }
+    .m-get { background: rgba(196,148,58,0.12); color: var(--amber); }
+    .api-path { font-size: 12px; font-weight: 500; font-family: 'Courier New', monospace; margin-bottom: 4px; }
+    .api-desc { font-size: 11px; color: var(--text-muted); }
+    .throughput-bar { margin-top: 12px; }
+    .tb-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+    .tb-track { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
+    .tb-fill { height: 100%; border-radius: 4px; background: var(--sage); transition: width 1s ease; }
+    .code-block { background: var(--card-alt); border: 0.5px solid var(--border); border-radius: 10px; padding: 14px; font-family: 'Courier New', monospace; font-size: 11px; color: var(--text-muted); line-height: 1.7; overflow-x: auto; white-space: pre; margin-top: 12px; }
+    .code-keyword { color: var(--sage); }
+    .code-string { color: var(--amber); }
+    .code-comment { color: var(--text-faint); }
+
+    /* Chart canvas */
+    .chart-wrap { position: relative; height: 160px; width: 100%; }
+
+    /* Live indicator */
+    .live-badge { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--sage); }
+    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); animation: pulse 1.5s infinite; }
+
+    /* Run btn */
+    .run-btn { font-size: 12px; padding: 6px 14px; border-radius: 8px; background: var(--sage); color: #fff; border: none; cursor: pointer; transition: opacity .2s; font-weight: 500; }
+    .run-btn:hover { opacity: 0.85; }
+    .run-btn:active { opacity: 0.7; transform: scale(0.98); }
+
+    /* File drop area */
+    .drop-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 20px; text-align: center; background: var(--card-alt); cursor: pointer; transition: border-color 0.2s, background-color 0.2s; }
+    .drop-zone:hover { border-color: var(--sage); background: var(--sage-pale); }
+    .drop-zone p { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+
+    /* Algorithm output */
+    .algo-out { background: var(--card-alt); border: 0.5px solid var(--border); border-radius: 10px; padding: 12px; font-size: 12px; margin-top: 10px; }
+    .algo-step { display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start; }
+    .algo-num { width: 18px; height: 18px; border-radius: 50%; background: var(--sage-pale); color: var(--sage); font-size: 10px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+    .algo-text { color: var(--text-muted); line-height: 1.5; }
+    .dist-badge { font-size: 11px; font-weight: 500; color: var(--teal); background: rgba(74,155,142,0.1); padding: 4px 10px; border-radius: 8px; display: inline-block; margin-top: 6px; }
+  </style>
+</head>
+<body>
+
+<h2 class="sr-only">Smart Waste Disposal System — live monitoring dashboard with CV classification, IoT sensors, route optimization, feedback loop, and API metrics</h2>
+
+<div class="dash">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="logo">
+        <svg viewBox="0 0 24 24"><path d="M3 6l4 4-4 4M9 12h12M17 5l4 4-4 4"/></svg>
+      </div>
+      <h1>Smart Waste Disposal System</h1>
+    </div>
+    <div class="topbar-right">
+      <div class="live-badge"><div class="live-dot"></div> Live</div>
+      <span id="clock" style="font-size:11px;color:var(--text-faint)"></span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('overview')">Overview</div>
+    <div class="tab" onclick="switchTab('sensors')">IoT Sensors</div>
+    <div class="tab" onclick="switchTab('classify')">CV Classification</div>
+    <div class="tab" onclick="switchTab('routes')">Route Optimizer</div>
+    <div class="tab" onclick="switchTab('feedback')">Feedback Loop</div>
+    <div class="tab" onclick="switchTab('api')">API / Deploy</div>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div class="panel active" id="panel-overview">
+    <div class="metrics-row">
+      <div class="metric"><div class="metric-label">Items Classified</div><div class="metric-val" style="color:var(--sage)" id="ov-items">0</div><div class="metric-sub">today</div></div>
+      <div class="metric"><div class="metric-label">Model Accuracy</div><div class="metric-val" id="ov-acc">96.4%</div><div class="metric-trend up" id="ov-acc-trend">↑ 0.8% this week</div></div>
+      <div class="metric"><div class="metric-label">Active Bins</div><div class="metric-val" id="ov-bins">6</div><div class="metric-sub">across 3 zones</div></div>
+      <div class="metric"><div class="metric-label">Route Savings</div><div class="metric-val" style="color:var(--teal)" id="ov-save">22.7%</div><div class="metric-sub">vs. baseline</div></div>
+      <div class="metric"><div class="metric-label">API Throughput</div><div class="metric-val" id="ov-api">0/hr</div><div class="metric-trend up">↑ target: 500</div></div>
+      <div class="metric"><div class="metric-label">Flagged Images</div><div class="metric-val" style="color:var(--amber)" id="ov-flag">0</div><div class="metric-sub">in retraining queue</div></div>
+    </div>
+    <div class="row2">
+      <div class="card">
+        <div class="card-title">Classification breakdown <span class="card-badge badge-green">live</span></div>
+        <div class="waste-classes">
+          <div class="waste-row"><div class="waste-icon" style="background:rgba(74,155,142,0.12)">♻</div><span class="waste-name" style="font-size:12px">Plastic</span><div class="waste-bar-bg"><div class="waste-bar-fill" id="breakdown-plastic" style="width:0%;background:var(--teal)"></div></div><span class="waste-pct" id="pct-plastic">0%</span></div>
+          <div class="waste-row"><div class="waste-icon" style="background:rgba(196,148,58,0.12)">📄</div><span class="waste-name" style="font-size:12px">Paper</span><div class="waste-bar-bg"><div class="waste-bar-fill" id="breakdown-paper" style="width:0%;background:var(--amber)"></div></div><span class="waste-pct" id="pct-paper">0%</span></div>
+          <div class="waste-row"><div class="waste-icon" style="background:rgba(106,143,113,0.12)">🫙</div><span class="waste-name" style="font-size:12px">Glass</span><div class="waste-bar-bg"><div class="waste-bar-fill" id="breakdown-glass" style="width:0%;background:var(--sage)"></div></div><span class="waste-pct" id="pct-glass">0%</span></div>
+          <div class="waste-row"><div class="waste-icon" style="background:rgba(155,107,90,0.12)">🔩</div><span class="waste-name" style="font-size:12px">Metal</span><div class="waste-bar-bg"><div class="waste-bar-fill" id="breakdown-metal" style="width:0%;background:var(--clay)"></div></div><span class="waste-pct" id="pct-metal">0%</span></div>
+          <div class="waste-row"><div class="waste-icon" style="background:rgba(106,143,113,0.08)">🍂</div><span class="waste-name" style="font-size:12px">Organic</span><div class="waste-bar-bg"><div class="waste-bar-fill" id="breakdown-organic" style="width:0%;background:var(--sage-light)"></div></div><span class="waste-pct" id="pct-organic">0%</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Throughput (last 8h) <span class="card-badge badge-green">live</span></div>
+        <div class="chart-wrap"><canvas id="throughput-chart" role="img" aria-label="Line chart showing classification throughput per hour over the last 8 hours">Loading chart...</canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">System health</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px">
+        <div style="padding:8px 10px;border-radius:8px;border:0.5px solid var(--border);font-size:11px">
+          <div style="color:var(--text-faint);margin-bottom:3px">CV Model</div>
+          <div style="color:var(--sage);font-weight:500" id="health-classifier">● Online</div>
+          <div style="color:var(--text-faint);margin-top:2px">YOLOv8 / ResNet50</div>
+        </div>
+        <div style="padding:8px 10px;border-radius:8px;border:0.5px solid var(--border);font-size:11px">
+          <div style="color:var(--text-faint);margin-bottom:3px">MQTT Broker</div>
+          <div style="color:var(--sage);font-weight:500" id="health-broker">● Connected</div>
+          <div style="color:var(--text-faint);margin-top:2px">Telemetry active</div>
+        </div>
+        <div style="padding:8px 10px;border-radius:8px;border:0.5px solid var(--border);font-size:11px">
+          <div style="color:var(--text-faint);margin-bottom:3px">FastAPI Server</div>
+          <div style="color:var(--sage);font-weight:500">● Running</div>
+          <div style="color:var(--text-faint);margin-top:2px">4 workers / Uvicorn</div>
+        </div>
+        <div style="padding:8px 10px;border-radius:8px;border:0.5px solid var(--border);font-size:11px">
+          <div style="color:var(--text-faint);margin-bottom:3px">Fine-tune job</div>
+          <div style="color:var(--amber);font-weight:500">● Scheduled</div>
+          <div style="color:var(--text-faint);margin-top:2px">Interval: 24 hrs</div>
+        </div>
+        <div style="padding:8px 10px;border-radius:8px;border:0.5px solid var(--border);font-size:11px">
+          <div style="color:var(--text-faint);margin-bottom:3px">Route Engine</div>
+          <div style="color:var(--sage);font-weight:500">● Active</div>
+          <div style="color:var(--text-faint);margin-top:2px">Dijkstra + GA</div>
+        </div>
+        <div style="padding:8px 10px;border-radius:8px;border:0.5px solid var(--border);font-size:11px">
+          <div style="color:var(--text-faint);margin-bottom:3px">Feedback Queue</div>
+          <div style="color:var(--sage);font-weight:500" id="health-feedback-count">0 pending</div>
+          <div style="color:var(--text-faint);margin-top:2px">Ready for review</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SENSORS -->
+  <div class="panel" id="panel-sensors">
+    <div class="card-title" style="font-size:14px;font-weight:500;color:var(--text)">12 Live Sensor Streams — MQTT Broker Cache <span class="live-badge" style="margin-left:8px"><div class="live-dot"></div> streaming</span></div>
+    <div class="sensor-grid" id="sensor-grid"></div>
+    <div class="card" style="margin-top:4px">
+      <div class="card-title">MQTT topic schema</div>
+      <div class="code-block"><span class="code-comment"># Topic format: waste/{zone}/{bin_id}/{sensor_type}</span>
+<span class="code-keyword">waste</span>/zone_A/bin_01/<span class="code-string">ultrasonic</span>   → fill level (%)
+<span class="code-keyword">waste</span>/zone_A/bin_01/<span class="code-string">weight</span>       → kg
+<span class="code-keyword">waste</span>/zone_B/bin_03/<span class="code-string">temperature</span>  → °C
+<span class="code-keyword">waste</span>/zone_C/bin_05/<span class="code-string">humidity</span>     → %RH
+<span class="code-keyword">waste</span>/zone_B/bin_03/<span class="code-string">gas_voc</span>      → ppm</div>
+    </div>
+  </div>
+
+  <!-- CLASSIFY -->
+  <div class="panel" id="panel-classify">
+    <div class="row2">
+      <div class="card">
+        <div class="card-title">Classify Waste Image <span class="card-badge badge-green">YOLOv8 + ResNet50</span></div>
+        <div class="drop-zone" onclick="document.getElementById('image-upload').click()" id="drop-zone">
+          <svg style="width:36px; height:36px; stroke:var(--text-muted); stroke-width:1.5; fill:none;" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+          <p>Drag and drop waste image here, or <b>browse</b></p>
+          <input type="file" id="image-upload" accept="image/*" style="display:none;" onchange="handleImageUpload(event)" />
+        </div>
+        <div id="upload-status" style="font-size:12px; color:var(--text-muted); margin-top:8px; text-align:center;"></div>
+        
+        <div id="classification-result-card" style="display:none; margin-top:12px; padding:12px; border-radius:8px; border:0.5px solid var(--border); background:var(--card-alt); font-size:12px;">
+          <!-- Filled dynamically -->
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Live classification feed</div>
+        <div id="classify-feed" style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:11px; color:var(--text-faint); text-align:center; padding:20px;">No classifications yet. Upload an image to start!</div>
+        </div>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="card">
+        <div class="card-title">Model precision by class</div>
+        <div class="chart-wrap" style="height:180px"><canvas id="precision-chart" role="img" aria-label="Bar chart of model precision per waste class">Loading...</canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Inference details</div>
+        <div class="conf-row">
+          <span>Mean Average Precision (mAP@50)</span>
+          <span class="conf-val" style="color:var(--sage)">96.4%</span>
+        </div>
+        <div class="conf-row" style="border-top:none;margin-top:0;padding-top:0">
+          <span>Inference latency (last)</span>
+          <span class="conf-val" id="inference-latency">N/A</span>
+        </div>
+        <div class="conf-row" style="border-top:none;margin-top:0;padding-top:0">
+          <span>Pipeline (detect → crop → classify)</span>
+          <span class="conf-val">3 stages</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROUTES -->
+  <div class="panel" id="panel-routes">
+    <div class="row2">
+      <div class="card">
+        <div class="card-title">Collection route map <span class="card-badge badge-amber">Dijkstra + GA</span></div>
+        <svg id="route-svg" viewBox="0 0 280 220" role="img"><title>Route map showing bin locations and optimized collection path across 3 zones</title>
+          <defs><marker id="ra" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round"/></marker></defs>
+          <!-- Grid background -->
+          <rect x="0" y="0" width="280" height="220" fill="var(--card-alt)" rx="8"/>
+          <line x1="0" y1="55" x2="280" y2="55" stroke="var(--border)" stroke-width="0.5"/>
+          <line x1="0" y1="110" x2="280" y2="110" stroke="var(--border)" stroke-width="0.5"/>
+          <line x1="0" y1="165" x2="280" y2="165" stroke="var(--border)" stroke-width="0.5"/>
+          <line x1="93" y1="0" x2="93" y2="220" stroke="var(--border)" stroke-width="0.5"/>
+          <line x1="186" y1="0" x2="186" y2="220" stroke="var(--border)" stroke-width="0.5"/>
+          <!-- Optimal route path -->
+          <path id="route-line" d="" fill="none" stroke="var(--sage)" stroke-width="1.5" stroke-dasharray="4 2" marker-end="url(#ra)" opacity="0.6"/>
+          <!-- Depot -->
+          <rect x="28" y="174" width="24" height="22" rx="5" fill="var(--slate)" opacity="0.9"/>
+          <text x="40" y="189" text-anchor="middle" font-size="9" fill="#fff" font-weight="500">DEP</text>
+          <!-- Bins -->
+          <g id="map-bin_A"><circle cx="90" cy="100" r="10" fill="var(--sage)" opacity="0.9"/><text x="90" y="104" text-anchor="middle" font-size="9" fill="#fff" font-weight="500">A</text><text x="90" y="90" text-anchor="middle" font-size="9" fill="var(--text-muted)">A</text></g>
+          <g id="map-bin_B"><circle cx="150" cy="60" r="10" fill="var(--sage)" opacity="0.9"/><text x="150" y="64" text-anchor="middle" font-size="9" fill="#fff" font-weight="500">B</text><text x="150" y="50" text-anchor="middle" font-size="9" fill="var(--text-muted)">B</text></g>
+          <g id="map-bin_C"><circle cx="220" cy="90" r="10" fill="var(--sage)" opacity="0.9"/><text x="220" y="94" text-anchor="middle" font-size="9" fill="#fff" font-weight="500">C</text><text x="220" y="80" text-anchor="middle" font-size="9" fill="var(--text-muted)">C</text></g>
+          <g id="map-bin_D"><circle cx="240" cy="155" r="10" fill="var(--sage)" opacity="0.9"/><text x="240" y="159" text-anchor="middle" font-size="9" fill="#fff" font-weight="500">D</text><text x="240" y="145" text-anchor="middle" font-size="9" fill="var(--text-muted)">D</text></g>
+          <g id="map-bin_E"><circle cx="180" cy="190" r="10" fill="var(--sage)" opacity="0.9"/><text x="180" y="194" text-anchor="middle" font-size="9" fill="#fff" font-weight="500">E</text><text x="180" y="210" text-anchor="middle" font-size="9" fill="var(--text-muted)">E</text></g>
+          <g id="map-bin_F"><circle cx="60" cy="140" r="10" fill="var(--sage)" opacity="0.9"/><text x="60" y="144" text-anchor="middle" font-size="9" fill="#fff" font-weight="500">F</text><text x="60" y="130" text-anchor="middle" font-size="9" fill="var(--text-muted)">F</text></g>
+        </svg>
+        <div class="route-legend">
+          <div class="route-leg-item"><div class="route-leg-dot" style="background:var(--clay)"></div>Critical ≥80%</div>
+          <div class="route-leg-item"><div class="route-leg-dot" style="background:var(--amber)"></div>High 60–79%</div>
+          <div class="route-leg-item"><div class="route-leg-dot" style="background:var(--sage)"></div>Normal &lt;60%</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Optimize route <button class="run-btn" onclick="runOptimize()">▶ Run Dijkstra</button></div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:0.5px solid var(--border)"><span style="color:var(--text-muted)">Algorithm</span><span style="font-weight:500">Dijkstra + Genetic</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:0.5px solid var(--border)"><span style="color:var(--text-muted)">Threshold</span><span style="font-weight:500">≥ 60% fill</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:0.5px solid var(--border)"><span style="color:var(--text-muted)">Bins eligible</span><span style="font-weight:500" id="r-eligible">...</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:0.5px solid var(--border)"><span style="color:var(--text-muted)">Baseline distance</span><span style="font-weight:500" id="r-baseline">...</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0"><span style="color:var(--text-muted)">Optimized distance</span><span class="dist-badge" id="r-dist">Click run</span></div>
+        </div>
+        <div class="algo-out" id="algo-out">
+          <div class="algo-step"><div class="algo-num">1</div><div class="algo-text">Ready to run route optimization for the 6 collection bins.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEEDBACK -->
+  <div class="panel" id="panel-feedback">
+    <div class="card">
+      <div class="card-title">Adaptive ML feedback loop</div>
+      <div class="feedback-flow">
+        <div class="fb-step"><div class="fb-icon" style="background:rgba(74,155,142,0.1)"><span style="font-size:20px">📸</span></div><div class="fb-label">Image captured</div></div>
+        <div class="fb-arrow">→</div>
+        <div class="fb-step"><div class="fb-icon" style="background:rgba(196,148,58,0.1)"><span style="font-size:20px">🤖</span></div><div class="fb-label">CV model inference</div></div>
+        <div class="fb-arrow">→</div>
+        <div class="fb-step"><div class="fb-icon" style="background:rgba(155,107,90,0.1)"><span style="font-size:20px">⚑</span></div><div class="fb-label">Conf &lt;0.7 → flag</div></div>
+        <div class="fb-arrow">→</div>
+        <div class="fb-step"><div class="fb-icon" style="background:rgba(106,143,113,0.1)"><span style="font-size:20px">🗄</span></div><div class="fb-label">Store + label</div></div>
+        <div class="fb-arrow">→</div>
+        <div class="fb-step"><div class="fb-icon" style="background:rgba(74,85,104,0.1)"><span style="font-size:20px">🔁</span></div><div class="fb-label">Fine-tune nightly</div></div>
+        <div class="fb-arrow">→</div>
+        <div class="fb-step"><div class="fb-icon" style="background:rgba(74,155,142,0.12)"><span style="font-size:20px">✓</span></div><div class="fb-label">Deploy updated model</div></div>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="card">
+        <div class="card-title">Retraining queue <span class="card-badge badge-amber" id="queue-count">0 pending</span></div>
+        <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">Click on a flagged item to submit true labels and train the model.</div>
+        <div class="queue-list" id="queue-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Accuracy over training rounds</div>
+        <div class="chart-wrap" style="height:180px"><canvas id="accuracy-chart" role="img" aria-label="Line chart showing model accuracy improving across 8 training rounds">Loading...</canvas></div>
+        <div class="conf-row">
+          <span>Feedback queue size</span><span class="conf-val" id="queue-total">0 items</span>
+        </div>
+        <div class="conf-row" style="border-top:none;margin-top:0;padding-top:0">
+          <span>Manual trigger</span><button class="run-btn" style="padding:2px 8px; font-size:10px;" onclick="triggerTraining()">Trigger Fine-tune</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- API -->
+  <div class="panel" id="panel-api">
+    <div class="card">
+      <div class="card-title">FastAPI service endpoints</div>
+      <div class="api-grid">
+        <div class="api-card"><div class="api-method m-post">POST</div><div class="api-path">/classify</div><div class="api-desc">Upload image → returns class, confidence, bbox. Async, batched.</div></div>
+        <div class="api-card"><div class="api-method m-get">GET</div><div class="api-path">/sensors/live</div><div class="api-desc">All 12 sensor stream snapshots via MQTT cache.</div></div>
+        <div class="api-card"><div class="api-method m-post">POST</div><div class="api-path">/feedback/flag</div><div class="api-desc">Flag misclassified image with true label for retraining.</div></div>
+        <div class="api-card"><div class="api-method m-get">GET</div><div class="api-path">/route/optimize</div><div class="api-desc">Trigger Dijkstra+GA and return optimized route JSON.</div></div>
+        <div class="api-card"><div class="api-method m-get">GET</div><div class="api-path">/metrics</div><div class="api-desc">Model mAP, throughput, latency, queue size — Prometheus ready.</div></div>
+        <div class="api-card"><div class="api-method m-post">POST</div><div class="api-path">/train/trigger</div><div class="api-desc">Manually trigger fine-tune job. Returns job ID + ETA.</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Throughput capacity <span class="card-badge badge-green">target: 500 items/hr</span></div>
+      <div class="throughput-bar">
+        <div class="tb-label"><span id="throughput-current">Current: 0/hr</span><span id="throughput-pct">0% of target</span></div>
+        <div class="tb-track"><div class="tb-fill" id="throughput-fill" style="width:0%"></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-top:12px">
+        <div style="padding:8px;border-radius:8px;border:0.5px solid var(--border);font-size:11px;text-align:center"><div style="color:var(--text-faint)">Workers</div><div style="font-weight:500;margin-top:2px">4 × uvicorn</div></div>
+        <div style="padding:8px;border-radius:8px;border:0.5px solid var(--border);font-size:11px;text-align:center"><div style="color:var(--text-faint)">Average latency</div><div style="font-weight:500;margin-top:2px" id="avg-latency-val">N/A</div></div>
+        <div style="padding:8px;border-radius:8px;border:0.5px solid var(--border);font-size:11px;text-align:center"><div style="color:var(--text-faint)">Model status</div><div style="font-weight:500;margin-top:2px;color:var(--sage)" id="model-health-status">Ready</div></div>
+        <div style="padding:8px;border-radius:8px;border:0.5px solid var(--border);font-size:11px;text-align:center"><div style="color:var(--text-faint)">Uptime</div><div style="font-weight:500;margin-top:2px" id="uptime-val">0s</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">FastAPI classify endpoint (Python)</div>
+      <div class="code-block"><span class="code-keyword">from</span> fastapi <span class="code-keyword">import</span> FastAPI, UploadFile
+<span class="code-keyword">from</span> classifier <span class="code-keyword">import</span> WasteClassifier
+<span class="code-keyword">import</span> asyncio
+
+app = FastAPI()
+clf = WasteClassifier(<span class="code-string">"models/resnet50_waste.pt"</span>)
+
+<span class="code-keyword">@app</span>.post(<span class="code-string">"/classify"</span>)
+<span class="code-keyword">async def</span> classify_waste(file: UploadFile):
+    img_bytes = <span class="code-keyword">await</span> file.read()
+    result = <span class="code-keyword">await</span> asyncio.to_thread(clf.predict, img_bytes)
+    <span class="code-keyword">if</span> result[<span class="code-string">"confidence"</span>] &lt; <span class="code-string">0.70</span>:
+        <span class="code-keyword">await</span> flag_for_retraining(img_bytes, result)
+    <span class="code-keyword">return</span> result  <span class="code-comment"># {class, confidence, bbox}</span>
+
+<span class="code-comment"># Run: uvicorn main:app --workers 4 --host 0.0.0.0 --port 8000</span></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// Clock
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+}
+setInterval(updateClock, 1000); updateClock();
+
+// Tab switching
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const tabs = ['overview','sensors','classify','routes','feedback','api'];
+  const idx = tabs.indexOf(id);
+  document.querySelectorAll('.tab')[idx].classList.add('active');
+  document.getElementById('panel-'+id).classList.add('active');
+  
+  if (id === 'feedback') {
+    updateFeedbackQueue();
+  }
+}
+
+// 12 Sensors Config
+const SENSOR_METADATA = {
+  S01: {id:'S01',zone:'A',bin:'bin_01',type:'Ultrasonic',unit:'% fill',cls:'s-high',fcls:'fill-high'},
+  S02: {id:'S02',zone:'A',bin:'bin_01',type:'Weight',unit:'kg',cls:'s-mid',fcls:'fill-mid'},
+  S03: {id:'S03',zone:'A',bin:'bin_02',type:'Ultrasonic',unit:'% fill',cls:'s-low',fcls:'fill-low'},
+  S04: {id:'S04',zone:'A',bin:'bin_02',type:'Temperature',unit:'°C',cls:'s-teal',fcls:'fill-teal'},
+  S05: {id:'S05',zone:'B',bin:'bin_03',type:'Ultrasonic',unit:'% fill',cls:'s-high',fcls:'fill-high'},
+  S06: {id:'S06',zone:'B',bin:'bin_03',type:'Weight',unit:'kg',cls:'s-mid',fcls:'fill-mid'},
+  S07: {id:'S07',zone:'B',bin:'bin_03',type:'Humidity',unit:'% RH',cls:'s-low',fcls:'fill-low'},
+  S08: {id:'S08',zone:'B',bin:'bin_04',type:'Gas (VOC)',unit:'ppm',cls:'s-teal',fcls:'fill-teal'},
+  S09: {id:'S09',zone:'C',bin:'bin_05',type:'Ultrasonic',unit:'% fill',cls:'s-low',fcls:'fill-low'},
+  S10: {id:'S10',zone:'C',bin:'bin_05',type:'Weight',unit:'kg',cls:'s-low',fcls:'fill-low'},
+  S11: {id:'S11',zone:'C',bin:'bin_06',type:'Ultrasonic',unit:'% fill',cls:'s-mid',fcls:'fill-mid'},
+  S12: {id:'S12',zone:'C',bin:'bin_06',type:'Temperature',unit:'°C',cls:'s-teal',fcls:'fill-teal'},
+};
+
+// Generate sensor UI
+const grid = document.getElementById('sensor-grid');
+Object.values(SENSOR_METADATA).forEach(s => {
+  const d = document.createElement('div');
+  d.className = 'sensor '+s.cls;
+  d.id = 'sensor-'+s.id;
+  d.innerHTML = `<div class="sensor-id">${s.id} · ${s.bin} (Zone ${s.zone})</div><div class="sensor-type">${s.type}</div><div class="sensor-val">-- <span style="font-size:10px;font-weight:400;color:var(--text-muted)">${s.unit}</span></div><div class="sensor-bar"><div class="sensor-fill ${s.fcls}" style="width:0%"></div></div>`;
+  grid.appendChild(d);
+});
+
+// Update sensors live from API
+async function updateSensorsLive() {
+  try {
+    const response = await fetch('/sensors/live');
+    const result = await response.json();
+    const data = result.data;
+    
+    // Track classification breakdown categories dynamically from ultrasonic sensors
+    let binUltrasonicVals = {};
+
+    Object.values(data).forEach(sensorStr => {
+      const s = JSON.parse(sensorStr);
+      const metadata = SENSOR_METADATA[s.sensor_id];
+      if (!metadata) return;
+      
+      const el = document.getElementById('sensor-' + s.sensor_id);
+      if (el) {
+        let valFormatted = s.value;
+        if (metadata.type === 'Ultrasonic') {
+          valFormatted = `${Math.round(s.value)}%`;
+          binUltrasonicVals[metadata.bin] = s.value;
+        } else if (metadata.type === 'Weight') {
+          valFormatted = `${s.value.toFixed(1)} kg`;
+        } else if (metadata.type === 'Temperature') {
+          valFormatted = `${s.value.toFixed(1)}°C`;
+        } else if (metadata.type === 'Humidity') {
+          valFormatted = `${Math.round(s.value)}% RH`;
+        } else if (metadata.type === 'Gas (VOC)') {
+          valFormatted = `${Math.round(s.value)} ppm`;
+        }
+        
+        el.querySelector('.sensor-val').innerHTML = `${valFormatted} <span style="font-size:10px;font-weight:400;color:var(--text-muted)">${metadata.unit}</span>`;
+        // Normalize fill level bar representation
+        let fillPct = s.value;
+        if (metadata.type === 'Temperature') fillPct = (s.value / 50) * 100;
+        else if (metadata.type === 'Weight') fillPct = (s.value / 60) * 100;
+        
+        el.querySelector('.sensor-fill').style.width = Math.min(100, Math.max(0, fillPct)) + '%';
+      }
+    });
+
+    // Update Map Visuals (if route optimizer hasn't overridden colors)
+    updateMapBinColors(binUltrasonicVals);
+
+  } catch (e) {
+    console.error("Error fetching live sensors:", e);
+  }
+}
+setInterval(updateSensorsLive, 3000);
+updateSensorsLive();
+
+// Helper to update map bin SVG colors based on live fill levels
+function updateMapBinColors(ultrasonicVals) {
+  // Mapping API bin IDs to Map groups (A, B, C, D, E, F)
+  const mapBins = {
+    'bin_01': 'map-bin_A', // Zone A
+    'bin_02': 'map-bin_B', // Zone A
+    'bin_03': 'map-bin_C', // Zone B
+    'bin_04': 'map-bin_D', // Zone B
+    'bin_05': 'map-bin_E', // Zone C
+    'bin_06': 'map-bin_F', // Zone C
+  };
+
+  for (const [binId, val] of Object.entries(ultrasonicVals)) {
+    const svgId = mapBins[binId];
+    if (!svgId) continue;
+    const g = document.getElementById(svgId);
+    if (!g) continue;
+    
+    const circle = g.querySelector('circle');
+    const textLabel = g.querySelector('text:last-of-type');
+    
+    if (textLabel) textLabel.textContent = `${Math.round(val)}%`;
+
+    if (circle) {
+      if (val >= 80) circle.setAttribute('fill', 'var(--clay)');
+      else if (val >= 60) circle.setAttribute('fill', 'var(--amber)');
+      else circle.setAttribute('fill', 'var(--sage)');
+    }
+  }
+}
+
+// Live metrics & health checks
+async function updateMetricsAndHealth() {
+  try {
+    // Health Check
+    const healthResp = await fetch('/health');
+    const health = await healthResp.json();
+    document.getElementById('health-classifier').innerHTML = health.classifier ? '● Online' : '● Offline';
+    document.getElementById('health-classifier').style.color = health.classifier ? 'var(--sage)' : 'var(--clay)';
+    
+    // Metrics
+    const response = await fetch('/metrics');
+    const data = await response.json();
+    
+    document.getElementById('ov-items').textContent = data.total_classified.toLocaleString();
+    document.getElementById('ov-flag').textContent = data.feedback_queue.pending;
+    document.getElementById('health-feedback-count').textContent = `${data.feedback_queue.pending} pending`;
+    document.getElementById('queue-count').textContent = `${data.feedback_queue.pending} pending`;
+    document.getElementById('queue-total').textContent = `${data.feedback_queue.pending + data.feedback_queue.reviewed + data.feedback_queue.used_in_training} items`;
+    
+    // API Capacity
+    const currentTput = data.throughput_per_hr;
+    document.getElementById('ov-api').textContent = `${currentTput}/hr`;
+    document.getElementById('throughput-current').textContent = `Current: ${currentTput}/hr`;
+    const capacityPct = Math.min(100, (currentTput / 500) * 100);
+    document.getElementById('throughput-pct').textContent = `${capacityPct.toFixed(1)}% of target`;
+    document.getElementById('throughput-fill').style.width = capacityPct + '%';
+    
+    // Uptime & Latency
+    document.getElementById('avg-latency-val').textContent = `${data.avg_latency_ms.toFixed(1)} ms`;
+    document.getElementById('uptime-val').textContent = formatUptime(data.uptime_sec);
+
+  } catch (e) {
+    console.error("Error updating metrics/health:", e);
+  }
+}
+setInterval(updateMetricsAndHealth, 3000);
+updateMetricsAndHealth();
+
+function formatUptime(sec) {
+  if (sec < 60) return `${sec}s`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ${sec%60}s`;
+  const hr = Math.floor(min / 60);
+  return `${hr}h ${min%60}m`;
+}
+
+// Classify Handler
+const wasteTypes = ['Plastic','Paper','Glass','Metal','Organic'];
+const wasteIcons = ['♻','📄','🫙','🔩','🍂'];
+const feed = document.getElementById('classify-feed');
+
+async function handleImageUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('upload-status');
+  const resultCard = document.getElementById('classification-result-card');
+  
+  statusEl.textContent = `Uploading & Classifying ${file.name}...`;
+  resultCard.style.display = 'none';
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const response = await fetch('/classify', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.detail || 'Classification failed.');
+    }
+    
+    const data = await response.json();
+    statusEl.textContent = '';
+    resultCard.style.display = 'block';
+    
+    // Display result card
+    resultCard.innerHTML = `
+      <div style="font-weight:600; font-size:14px; margin-bottom:6px; color:var(--sage)">Result: ${data.label}</div>
+      <div style="margin-bottom:4px;">Confidence: <b>${(data.confidence * 100).toFixed(1)}%</b></div>
+      <div style="margin-bottom:4px;">Latency: <b>${data.latency_ms} ms</b></div>
+      <div style="margin-bottom:4px;">Bounding Box: <b>${data.bbox ? JSON.stringify(data.bbox) : 'None'}</b></div>
+      <div>Flagged for retraining: <span style="padding:2px 7px; border-radius:10px; font-weight:500; ${data.flagged ? 'background:#FDF3E0;color:var(--amber)' : 'background:var(--sage-pale);color:var(--sage)'}">${data.flagged ? 'Yes' : 'No'}</span></div>
+    `;
+
+    document.getElementById('inference-latency').textContent = `${data.latency_ms} ms`;
+
+    // Add to local UI feed list
+    addToFeedList(data.label, data.confidence, data.flagged, file.name);
+    
+    // Refresh queue counts
+    updateMetricsAndHealth();
+
+  } catch (e) {
+    statusEl.textContent = `Error: ${e.message}`;
+  }
+}
+
+function addToFeedList(label, confidence, flagged, fileName) {
+  const idx = wasteTypes.indexOf(label);
+  const icon = idx !== -1 ? wasteIcons[idx] : '📸';
+  
+  // Remove placeholders
+  if (feed.querySelector('div') && feed.querySelector('div').textContent.includes('No classifications')) {
+    feed.innerHTML = '';
+  }
+
+  const el = document.createElement('div');
+  el.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:0.5px solid var(--border);font-size:12px;opacity:0;transition:opacity .4s';
+  el.innerHTML = `<div style="width:32px;height:32px;border-radius:8px;background:rgba(74,155,142,0.1);display:flex;align-items:center;justify-content:center;font-size:16px">${icon}</div><div style="flex:1"><div style="font-weight:500">${label}</div><div style="color:var(--text-faint);font-size:10px">conf: ${confidence.toFixed(2)} · ${fileName}</div></div><div style="font-size:10px;padding:2px 7px;border-radius:10px;${flagged?'background:#FDF3E0;color:var(--amber)':'background:var(--sage-pale);color:var(--sage)'}">${flagged?'flagged':'ok'}</div>`;
+  feed.insertBefore(el, feed.firstChild);
+  setTimeout(()=>el.style.opacity='1',50);
+  if(feed.children.length>5) feed.removeChild(feed.lastChild);
+}
+
+// Drag & drop handlers
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.style.borderColor = 'var(--sage)';
+  dropZone.style.backgroundColor = 'var(--sage-pale)';
+});
+dropZone.addEventListener('dragleave', () => {
+  dropZone.style.borderColor = 'var(--border)';
+  dropZone.style.backgroundColor = 'var(--card-alt)';
+});
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.style.borderColor = 'var(--border)';
+  dropZone.style.backgroundColor = 'var(--card-alt)';
+  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    document.getElementById('image-upload').files = e.dataTransfer.files;
+    handleImageUpload({ target: { files: e.dataTransfer.files } });
+  }
+});
+
+// Route Optimization
+async function runOptimize() {
+  const btn = document.querySelector('#panel-routes .run-btn');
+  btn.textContent = '⏳ Running Dijkstra...'; btn.disabled = true;
+  try {
+    const response = await fetch('/route/optimize');
+    const data = await response.json();
+    
+    document.getElementById('r-dist').textContent = `${data.total_km.toFixed(2)} km`;
+    document.getElementById('r-baseline').textContent = `${data.baseline_km.toFixed(2)} km`;
+    document.getElementById('r-eligible').textContent = `${data.eligible_bins.length} of 6`;
+    document.getElementById('ov-save').textContent = `${data.savings_pct}%`;
+
+    const algoOut = document.getElementById('algo-out');
+    algoOut.innerHTML = `
+      <div class="algo-step"><div class="algo-num">1</div><div class="algo-text">Graph built with 7 nodes (1 Depot, 6 Bins) using GPS coordinates.</div></div>
+      <div class="algo-step"><div class="algo-num">2</div><div class="algo-text">Found ${data.eligible_bins.length} bins matching collection threshold (fill ≥ 60%): <b>${data.eligible_bins.join(', ') || 'None'}</b>.</div></div>
+      <div class="algo-step"><div class="algo-num">3</div><div class="algo-text">Computed baseline greedy distance: ${data.baseline_km.toFixed(2)} km.</div></div>
+      <div class="algo-step"><div class="algo-num">4</div><div class="algo-text">Optimized sequence using Dijkstra + Genetic Algorithm: <b>${data.route.join(' → ')}</b>.</div></div>
+      <div class="algo-step"><div class="algo-num">5</div><div class="algo-text">Savings calculated: <b style="color:var(--sage)">${data.savings_pct}%</b> reduction in travel distance.</div></div>
+    `;
+
+    // Redraw optimized line in SVG
+    drawRouteLine(data.route);
+
+    btn.textContent = '✓ Done'; btn.disabled = false;
+    setTimeout(() => { btn.textContent = '▶ Run Dijkstra'; }, 2000);
+
+  } catch (e) {
+    console.error("Error optimizing route:", e);
+    btn.textContent = '❌ Failed'; btn.disabled = false;
+    setTimeout(() => { btn.textContent = '▶ Run Dijkstra'; }, 2000);
+  }
+}
+
+// Convert route bin array to SVG points and draw path
+function drawRouteLine(routeArray) {
+  // SVG coordinates map for Bins
+  const coords = {
+    'DEPOT': {x: 40, y: 185},
+    'bin_A': {x: 90, y: 100},
+    'bin_B': {x: 150, y: 60},
+    'bin_C': {x: 220, y: 90},
+    'bin_D': {x: 240, y: 155},
+    'bin_E': {x: 180, y: 190},
+    'bin_F': {x: 60, y: 140}
+  };
+
+  const points = routeArray.map(node => {
+    // Map API names like bin_01 -> bin_A, etc.
+    const cleanNode = node.replace('bin_01','bin_A')
+                          .replace('bin_02','bin_B')
+                          .replace('bin_03','bin_C')
+                          .replace('bin_04','bin_D')
+                          .replace('bin_05','bin_E')
+                          .replace('bin_06','bin_F');
+    const pt = coords[cleanNode];
+    return pt ? `${pt.x} ${pt.y}` : '';
+  }).filter(p => p !== '');
+
+  const pathD = points.length > 0 ? `M ${points.join(' L ')}` : '';
+  document.getElementById('route-line').setAttribute('d', pathD);
+}
+
+// Feedback Loop Retraining Queue
+async function updateFeedbackQueue() {
+  try {
+    const response = await fetch('/feedback/queue');
+    const items = await response.json();
+    const ql = document.getElementById('queue-list');
+    ql.innerHTML = '';
+    
+    // Filter pending
+    const pendingItems = items.filter(item => item.status === 'pending');
+    
+    if (pendingItems.length === 0) {
+      ql.innerHTML = '<div style="font-size:11px; color:var(--text-faint); text-align:center; padding:20px;">No pending items in queue</div>';
+      return;
+    }
+    
+    pendingItems.forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'queue-item';
+      el.style.cursor = 'pointer';
+      el.onclick = () => reviewItem(item);
+      
+      let icon = '🗂';
+      if (item.predicted_label === 'Plastic') icon = '♻';
+      else if (item.predicted_label === 'Paper') icon = '📄';
+      else if (item.predicted_label === 'Glass') icon = '🫙';
+      else if (item.predicted_label === 'Metal') icon = '🔩';
+      else if (item.predicted_label === 'Organic') icon = '🍂';
+
+      el.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px; width:100%">
+          <img src="/data/flagged/${item.img_hash}.jpg" style="width:36px; height:28px; border-radius:6px; object-fit:cover;" onerror="this.outerHTML='<div class=&quot;qi-thumb&quot; style=&quot;background:rgba(74,85,104,0.06)&quot;>${icon}</div>';" />
+          <div class="qi-info">
+            <div class="qi-id">${item.img_hash}.jpg</div>
+            <div class="qi-meta">Pred: ${item.predicted_label} (${(item.confidence * 100).toFixed(0)}%)</div>
+          </div>
+          <div class="qi-status st-pending">${item.status}</div>
+        </div>
+      `;
+      ql.appendChild(el);
+    });
+  } catch (e) {
+    console.error("Error updating feedback queue:", e);
+  }
+}
+
+async function reviewItem(item) {
+  const trueLabel = prompt(`Correct label for image "${item.img_hash}.jpg" (predicted: ${item.predicted_label}):\nOptions: Plastic, Paper, Glass, Metal, Organic`, item.predicted_label);
+  if (!trueLabel) return;
+  
+  if (!wasteTypes.includes(trueLabel)) {
+    alert("Invalid class. Choose from: Plastic, Paper, Glass, Metal, Organic");
+    return;
+  }
+
+  try {
+    const response = await fetch('/feedback/flag', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({img_hash: item.img_hash, true_label: trueLabel})
+    });
+    if (response.ok) {
+      alert("Feedback successfully submitted!");
+      updateFeedbackQueue();
+      updateMetricsAndHealth();
+    } else {
+      const err = await response.json();
+      alert(`Failed: ${err.detail}`);
+    }
+  } catch (e) {
+    alert(`Error: ${e.message}`);
+  }
+}
+
+async function triggerTraining() {
+  try {
+    const response = await fetch('/train/trigger', {method: 'POST'});
+    const data = await response.json();
+    alert(`Fine-tuning triggered! Job ID: ${data.job_id} | Status: ${data.status}`);
+  } catch (e) {
+    alert(`Error triggering training: ${e.message}`);
+  }
+}
+
+// Charts
+function initCharts() {
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const txt = isDark ? '#A0AEC0' : '#718096';
+  const grid2 = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+
+  // Throughput
+  const tCtx = document.getElementById('throughput-chart').getContext('2d');
+  new Chart(tCtx, {
+    type: 'line',
+    data: {
+      labels: ['8h','7h','6h','5h','4h','3h','2h','1h'],
+      datasets: [{
+        label: 'Items/hr',
+        data: [412,445,398,460,487,471,489,487],
+        borderColor: '#6B8F71',
+        backgroundColor: 'rgba(107,143,113,0.08)',
+        borderWidth: 1.5,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+        pointBackgroundColor: '#6B8F71'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: grid2 }, ticks: { color: txt, font: { size: 10 } } },
+        y: { grid: { color: grid2 }, ticks: { color: txt, font: { size: 10 } }, min: 300, max: 550 }
+      }
+    }
+  });
+
+  // Precision
+  const pCtx = document.getElementById('precision-chart').getContext('2d');
+  new Chart(pCtx, {
+    type: 'bar',
+    data: {
+      labels: ['Plastic','Paper','Glass','Metal','Organic'],
+      datasets: [{
+        label: 'Precision %',
+        data: [97.2, 95.8, 96.1, 98.0, 94.9],
+        backgroundColor: ['rgba(74,155,142,0.7)','rgba(196,148,58,0.7)','rgba(106,143,113,0.7)','rgba(155,107,90,0.7)','rgba(168,197,173,0.7)'],
+        borderColor: ['#4A9B8E','#C4943A','#6B8F71','#9B6B5A','#A8C5AD'],
+        borderWidth: 0.8,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: txt, font: { size: 10 } } },
+        y: { grid: { color: grid2 }, ticks: { color: txt, font: { size: 10 } }, min: 90, max: 100 }
+      }
+    }
+  });
+
+  // Accuracy over rounds
+  const aCtx = document.getElementById('accuracy-chart').getContext('2d');
+  new Chart(aCtx, {
+    type: 'line',
+    data: {
+      labels: ['R1','R2','R3','R4','R5','R6','R7','R8'],
+      datasets: [{
+        label: 'Accuracy %',
+        data: [88.2, 90.1, 91.8, 93.0, 94.2, 95.1, 95.9, 96.4],
+        borderColor: '#4A9B8E',
+        backgroundColor: 'rgba(74,155,142,0.08)',
+        borderWidth: 1.5,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+        pointBackgroundColor: '#4A9B8E'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: grid2 }, ticks: { color: txt, font: { size: 10 } } },
+        y: { grid: { color: grid2 }, ticks: { color: txt, font: { size: 10 } }, min: 80, max: 100 }
+      }
+    }
+  });
+}
+
+// Wait for Chart.js to load
+const waitChart = setInterval(() => {
+  if(window.Chart) { clearInterval(waitChart); initCharts(); }
+}, 100);
+</script>
+</body>
+</html>

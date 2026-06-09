@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  smart-waste-app:
+    build: .
+    container_name: smart_waste_system
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    restart: always

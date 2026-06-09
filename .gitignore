@@ -1,0 +1,20 @@
+# Python bytecode / compiled
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+dist/
+build/
+
+# Local data & retraining files (accumulates dynamically)
+data/
+feedback_metadata.jsonl
+
+# Large model weights (dynamically initialized/downloaded on runtime)
+models/*.pt
+!models/__init__.py
