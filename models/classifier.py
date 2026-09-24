@@ -1,5 +1,5 @@
 """
-Smart Waste Classifier — YOLOv8 + ResNet50 pipeline.
+Smart Waste Classifier — YOLOv8 + ResNet18 pipeline.
 Classifies: Plastic, Paper, Glass, Metal, Organic.
 """
 import cv2, io, time, logging
